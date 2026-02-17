@@ -40,10 +40,26 @@ unsafe fn clone(data: *const ()) -> RawWaker {
     Task::raw_waker(cloned)
 }
 
+unsafe fn wake(data: *const ()) {
+    let arc = unsafe { Arc::from_raw(data as *const Task)};
+    arc.schedule();
+}
+
+unsafe fn wake_by_ref(data: *const()) {
+    let arc = unsafe { Arc::from_raw(data as *const Task)};
+    arc.schedule();
+    std::mem::forget(arc);
+}
+
+unsafe fn drop(data: *const ()) {
+    let _ = unsafe { Arc::from_raw(data as *const Task)};
+}
+
 struct Task {
     future: Mutex<Pin<Box<dyn Future<Output = ()>>>>,
     executor: Arc<Executor>
 }
+
 static VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
 
 impl Task {
