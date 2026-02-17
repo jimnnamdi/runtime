@@ -6,9 +6,35 @@ struct Executor {
     queue: Mutex<VecDeque<Arc<Task>>>
 }
 
+impl Executor {
+    fn new() -> Arc<Self> {
+        Arc::new(Self {
+            queue:Mutex::new(VecDeque::new())
+        })
+    }
+
+    fn spawn(self: &Arc<Self>, fut: impl Future<Output = ()> + 'static) {
+        let task = Arc::new(Task {
+            future: Mutex::new(Box::pin(fut)),
+            executor: self.clone()
+        });
+
+        self.queue.lock().unwrap().push_back(task);
+    }
+    
+    fn run(self: &Arc<Self>) {
+        while let Some(task) = {
+            let mut queue = self.queue.lock().unwrap();
+            queue.pop_front()
+        } {
+            task.poll();
+        }
+    }
+}
+
 struct Task {
     future: Mutex<Pin<Box<dyn Future<Output = ()>>>>,
-    executor: Executor
+    executor: Arc<Executor>
 }
 static VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
 
