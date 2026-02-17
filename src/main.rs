@@ -32,6 +32,14 @@ impl Executor {
     }
 }
 
+
+unsafe fn clone(data: *const ()) -> RawWaker {
+    let arc = unsafe { Arc::from_raw(data as *const Task)};
+    let cloned = arc.clone();
+    std::mem::forget(arc);
+    Task::raw_waker(cloned)
+}
+
 struct Task {
     future: Mutex<Pin<Box<dyn Future<Output = ()>>>>,
     executor: Arc<Executor>
